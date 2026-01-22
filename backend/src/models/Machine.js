@@ -48,4 +48,4 @@ const machineSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-module.exports = mongoose.model("Machine", machineSchema);
+module.exports = mongoose.models.Machine || mongoose.model("Machine", machineSchema);
