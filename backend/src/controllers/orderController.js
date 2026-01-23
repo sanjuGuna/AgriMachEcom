@@ -4,10 +4,16 @@ const Machine = require("../models/Machine");
 /* CREATE ORDER (USER) POST /api/orders */
 exports.createOrder = async (req, res) => {
   try {
-    const { items } = req.body;
+    const { items, deliveryAddress } = req.body;
 
+    // Validate items
     if (!items || items.length === 0) {
       return res.status(400).json({ message: "Order items are required" });
+    }
+
+    // Validate address
+    if (!deliveryAddress) {
+      return res.status(400).json({ message: "Delivery address is required" });
     }
 
     let totalAmount = 0;
@@ -38,9 +44,11 @@ exports.createOrder = async (req, res) => {
       });
     }
 
+    // CREATE ORDER WITH ADDRESS
     const order = await Order.create({
       userId: req.user._id,
       items: orderItems,
+      deliveryAddress, 
       totalAmount,
       paymentStatus: "PENDING",
       orderStatus: "PLACED"
@@ -51,6 +59,7 @@ exports.createOrder = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
+
 
 /* GET LOGGED-IN USER ORDERS GET /api/orders/my */
 exports.getMyOrders = async (req, res) => {
