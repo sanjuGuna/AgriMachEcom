@@ -3,25 +3,28 @@ const Machine=require("../models/Machine");
 /* CREATE MACHINE (ADMIN ONLY) POST /api/machines */
 exports.createMachine = async (req, res) => {
   try {
-    const { name, category, price, description, images, stock } = req.body;
+    const { name, category, price, description, stock } = req.body;
 
     // Basic validation
-    if (!name || !category || !price || !description || !images || stock === undefined) {
-      return res.status(400).json({ message: "All fields are required" });
+    if (!name || !category || !price || !description || stock === undefined) {
+      return res.status(400).json({ 
+        message: "All fields are required" 
+      });
     }
 
-    if (!Array.isArray(images) || images.length < 3) {
+    if (!req.files || req.files.length < 3) {
       return res.status(400).json({
         message: "At least 3 machine images are required"
       });
     }
 
+    const images=req.files.map(file=>file.path)
     const machine = await Machine.create({
       name,
       category,
       price,
       description,
-      images,
+      images,//urls
       stock,
       createdBy: req.user._id // admin id from JWT
     });
