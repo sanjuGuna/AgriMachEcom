@@ -44,7 +44,7 @@ const Home: React.FC = () => {
     queryKey: ['machines'],
     queryFn: async () => {
       const response = await machineAPI.getAll();
-      return response.data as Machine[];
+      return response.data.machines as Machine[];
     },
   });
 
