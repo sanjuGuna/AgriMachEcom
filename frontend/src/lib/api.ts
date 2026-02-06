@@ -49,6 +49,23 @@ export const machineAPI = {
   getAll: (params?: { category?: string; minPrice?: number; maxPrice?: number }) =>
     api.get('/api/machines', { params }),
   getById: (id: string) => api.get(`/api/machines/${id}`),
+  create: (formData: FormData) =>
+    api.post('/api/machines', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    }),
+  update: (id: string, formData: FormData) =>
+    api.put(`/api/machines/${id}`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    }),
+  delete: (id: string) => api.delete(`/api/machines/${id}`),
+};
+
+// Order APIs (Admin)
+export const orderAPI = {
+  getAll: () => api.get('/api/orders'),
+  getById: (id: string) => api.get(`/api/orders/${id}`),
+  updateStatus: (id: string, status: string) =>
+    api.put(`/api/orders/${id}/status`, { status }),
 };
 
 export default api;
