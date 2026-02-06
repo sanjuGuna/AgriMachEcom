@@ -12,6 +12,13 @@ import Register from "./pages/Register";
 import Cart from "./pages/Cart";
 import Checkout from "./pages/Checkout";
 import NotFound from "./pages/NotFound";
+import AdminRoute from "./components/AdminRoute";
+import AdminLayout from "./components/AdminLayout";
+import Dashboard from "./pages/admin/Dashboard";
+import Machines from "./pages/admin/Machines";
+import MachineForm from "./pages/admin/MachineForm";
+import Orders from "./pages/admin/Orders";
+import { Outlet } from "react-router-dom";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -37,6 +44,25 @@ const App = () => (
               <Route path="/register" element={<Register />} />
               <Route path="/cart" element={<Cart />} />
               <Route path="/checkout" element={<Checkout />} />
+
+              {/* Admin Routes */}
+              <Route
+                path="/admin"
+                element={
+                  <AdminRoute>
+                    <AdminLayout>
+                      <Outlet />
+                    </AdminLayout>
+                  </AdminRoute>
+                }
+              >
+                <Route index element={<Dashboard />} />
+                <Route path="machines" element={<Machines />} />
+                <Route path="machines/new" element={<MachineForm />} />
+                <Route path="machines/:id" element={<MachineForm />} />
+                <Route path="orders" element={<Orders />} />
+              </Route>
+
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />
             </Routes>
