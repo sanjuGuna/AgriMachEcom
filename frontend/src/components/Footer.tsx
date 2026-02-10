@@ -14,7 +14,7 @@ const Footer: React.FC = () => {
                 <Tractor className="w-6 h-6" />
               </div>
               <div>
-                <span className="font-display font-bold text-lg">AgriMach</span>
+                <span className="font-display font-bold text-lg">Standard Agro Engineering India</span>
                 <span className="block text-xs text-primary-foreground/70 -mt-1">
                   Agricultural Machinery
                 </span>
@@ -66,7 +66,7 @@ const Footer: React.FC = () => {
               </li>
               <li className="flex items-start gap-3 text-primary-foreground/80">
                 <MapPin className="w-4 h-4 mt-1" />
-                <span>123 Farm Road, Agricultural Hub, India - 400001</span>
+                <span>5/42, Oodaikadu, Sitheri PO, Thalaivasal TK, Salem - 636101</span>
               </li>
             </ul>
           </div>

@@ -35,7 +35,7 @@ const Navbar: React.FC = () => {
               <Tractor className="w-6 h-6 text-primary-foreground" />
             </div>
             <div className="hidden sm:block">
-              <span className="font-display font-bold text-lg text-foreground">AgriMach</span>
+              <span className="font-display font-bold text-lg text-foreground">Standard Agro Engineering India</span>
               <span className="block text-xs text-muted-foreground -mt-1">Agricultural Machinery</span>
             </div>
           </Link>
