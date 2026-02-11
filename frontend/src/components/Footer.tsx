@@ -73,7 +73,7 @@ const Footer: React.FC = () => {
         </div>
 
         <div className="border-t border-primary-foreground/20 mt-8 pt-8 text-center text-primary-foreground/60 text-sm">
-          <p>&copy; {new Date().getFullYear()} AgriMach. All rights reserved.</p>
+          <p>&copy; {new Date().getFullYear()} Standard Agro Engineering India. All rights reserved.</p>
         </div>
       </div>
     </footer>
