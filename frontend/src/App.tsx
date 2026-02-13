@@ -18,6 +18,7 @@ import Dashboard from "./pages/admin/Dashboard";
 import Machines from "./pages/admin/Machines";
 import MachineForm from "./pages/admin/MachineForm";
 import Orders from "./pages/admin/Orders";
+import MyOrders from "./pages/MyOrders"
 import { Outlet } from "react-router-dom";
 
 const queryClient = new QueryClient({
@@ -44,7 +45,7 @@ const App = () => (
               <Route path="/register" element={<Register />} />
               <Route path="/cart" element={<Cart />} />
               <Route path="/checkout" element={<Checkout />} />
-
+              <Route path="/my-orders" element={<MyOrders/>} />
               {/* Admin Routes */}
               <Route
                 path="/admin"

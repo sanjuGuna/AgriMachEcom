@@ -10,6 +10,7 @@ import Layout from '@/components/Layout';
 import { useCart } from '@/contexts/CartContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
+import axios from 'axios';
 
 const Checkout: React.FC = () => {
   const [formData, setFormData] = useState({
@@ -24,7 +25,7 @@ const Checkout: React.FC = () => {
   const [orderPlaced, setOrderPlaced] = useState(false);
 
   const { cartItems, getTotalPrice, clearCart } = useCart();
-  const { user, isAuthenticated } = useAuth();
+  const { user, isAuthenticated, token } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -59,16 +60,44 @@ const Checkout: React.FC = () => {
 
     setIsLoading(true);
 
-    // Simulate order placement (to be replaced with actual API call)
-    setTimeout(() => {
-      setIsLoading(false);
+    try {
+      const orderData = {
+        items: cartItems.map(item => ({
+          machineId: item.machineId,
+          quantity: item.quantity
+        })),
+        deliveryAddress: {
+          fullName,
+          phone,
+          addressLine: address,
+          city,
+          state,
+          pincode
+        }
+      };
+
+      await axios.post('http://localhost:5000/api/orders', orderData, {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      });
+
       setOrderPlaced(true);
       clearCart();
       toast({
         title: 'Order Placed Successfully!',
         description: 'You will receive a confirmation email shortly',
       });
-    }, 2000);
+    } catch (error: any) {
+      console.error('Order placement error:', error);
+      toast({
+        title: 'Order Failed',
+        description: error.response?.data?.message || 'Something went wrong. Please try again.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   if (!isAuthenticated) {
@@ -92,13 +121,20 @@ const Checkout: React.FC = () => {
             Order Placed Successfully!
           </h2>
           <p className="text-muted-foreground mb-8 max-w-md mx-auto animate-fade-in">
-            Thank you for your order. We'll send you an email with the order details and tracking information.
+            Thank you for your order. You can view your order details in the My Orders section.
           </p>
-          <Link to="/">
-            <Button size="lg" className="gap-2 animate-slide-up">
-              Continue Shopping
-            </Button>
-          </Link>
+          <div className="flex justify-center gap-4">
+            <Link to="/my-orders">
+              <Button variant="outline" size="lg" className="animate-slide-up">
+                View My Orders
+              </Button>
+            </Link>
+            <Link to="/">
+              <Button size="lg" className="gap-2 animate-slide-up">
+                Continue Shopping
+              </Button>
+            </Link>
+          </div>
         </div>
       </Layout>
     );
