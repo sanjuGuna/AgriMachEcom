@@ -12,6 +12,19 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import axios from 'axios';
 
+import { userAPI } from '@/lib/api';
+
+interface Address {
+  _id: string;
+  fullName: string;
+  phone: string;
+  addressLine: string;
+  city: string;
+  state: string;
+  pincode: string;
+  isDefault: boolean;
+}
+
 const Checkout: React.FC = () => {
   const [formData, setFormData] = useState({
     fullName: '',
@@ -21,6 +34,11 @@ const Checkout: React.FC = () => {
     state: '',
     pincode: '',
   });
+  const [savedAddresses, setSavedAddresses] = useState<Address[]>([]);
+  const [selectedAddressId, setSelectedAddressId] = useState<string | null>(null);
+  const [showNewAddressForm, setShowNewAddressForm] = useState(false);
+  const [saveNewAddress, setSaveNewAddress] = useState(false);
+
   const [isLoading, setIsLoading] = useState(false);
   const [orderPlaced, setOrderPlaced] = useState(false);
 
@@ -28,6 +46,32 @@ const Checkout: React.FC = () => {
   const { user, isAuthenticated, token } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
+
+  React.useEffect(() => {
+    const fetchProfile = async () => {
+      try {
+        const { data } = await userAPI.getProfile();
+        if (data.addresses && data.addresses.length > 0) {
+          setSavedAddresses(data.addresses);
+          const defaultAddr = data.addresses.find((a: Address) => a.isDefault);
+          if (defaultAddr) {
+            setSelectedAddressId(defaultAddr._id);
+          } else {
+            setSelectedAddressId(data.addresses[0]._id);
+          }
+        } else {
+          setShowNewAddressForm(true);
+        }
+      } catch (error) {
+        console.error("Failed to fetch profile", error);
+        setShowNewAddressForm(true);
+      }
+    };
+
+    if (isAuthenticated) {
+      fetchProfile();
+    }
+  }, [isAuthenticated]);
 
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat('en-IN', {
@@ -44,36 +88,84 @@ const Checkout: React.FC = () => {
     }));
   };
 
+  const handleAddressSelect = (id: string) => {
+    setSelectedAddressId(id);
+    setShowNewAddressForm(false);
+  };
+
+  const handleAddNewAddress = () => {
+    setSelectedAddressId(null);
+    setShowNewAddressForm(true);
+    setFormData({
+      fullName: '',
+      phone: '',
+      address: '',
+      city: '',
+      state: '',
+      pincode: '',
+    });
+  };
+
   const handlePlaceOrder = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    const { fullName, phone, address, city, state, pincode } = formData;
+    let deliveryAddress;
 
-    if (!fullName || !phone || !address || !city || !state || !pincode) {
-      toast({
-        title: 'Validation Error',
-        description: 'Please fill in all delivery details',
-        variant: 'destructive',
-      });
-      return;
+    if (showNewAddressForm) {
+      const { fullName, phone, address, city, state, pincode } = formData;
+      if (!fullName || !phone || !address || !city || !state || !pincode) {
+        toast({
+          title: 'Validation Error',
+          description: 'Please fill in all delivery details',
+          variant: 'destructive',
+        });
+        return;
+      }
+      deliveryAddress = {
+        fullName,
+        phone,
+        addressLine: address,
+        city,
+        state,
+        pincode
+      };
+    } else {
+      const selected = savedAddresses.find(a => a._id === selectedAddressId);
+      if (!selected) {
+        toast({
+          title: 'Error',
+          description: 'Please select an address',
+          variant: 'destructive',
+        });
+        return;
+      }
+      deliveryAddress = {
+        fullName: selected.fullName,
+        phone: selected.phone,
+        addressLine: selected.addressLine,
+        city: selected.city,
+        state: selected.state,
+        pincode: selected.pincode
+      };
     }
 
     setIsLoading(true);
 
     try {
+      // Save address if requested
+      if (showNewAddressForm && saveNewAddress) {
+        await userAPI.addAddress({
+          ...deliveryAddress,
+          isDefault: savedAddresses.length === 0 // Make default if it's the first one
+        });
+      }
+
       const orderData = {
         items: cartItems.map(item => ({
           machineId: item.machineId,
           quantity: item.quantity
         })),
-        deliveryAddress: {
-          fullName,
-          phone,
-          addressLine: address,
-          city,
-          state,
-          pincode
-        }
+        deliveryAddress
       };
 
       await axios.post('http://localhost:5000/api/orders', orderData, {
@@ -100,6 +192,8 @@ const Checkout: React.FC = () => {
     }
   };
 
+  // ... (navigation guards remain same)
+
   if (!isAuthenticated) {
     navigate('/login', { state: { from: '/checkout' } });
     return null;
@@ -111,6 +205,7 @@ const Checkout: React.FC = () => {
   }
 
   if (orderPlaced) {
+    // ... (success view remains same)
     return (
       <Layout>
         <div className="container mx-auto px-4 py-20 text-center">
@@ -167,81 +262,150 @@ const Checkout: React.FC = () => {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <form onSubmit={handlePlaceOrder} className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="fullName">Full Name</Label>
-                    <Input
-                      id="fullName"
-                      name="fullName"
-                      value={formData.fullName}
-                      onChange={handleChange}
-                      placeholder="Enter your full name"
-                      disabled={isLoading}
-                    />
-                  </div>
+                <form onSubmit={handlePlaceOrder} className="space-y-6">
 
-                  <div className="space-y-2">
-                    <Label htmlFor="phone">Phone Number</Label>
-                    <Input
-                      id="phone"
-                      name="phone"
-                      type="tel"
-                      value={formData.phone}
-                      onChange={handleChange}
-                      placeholder="+91 98765 43210"
-                      disabled={isLoading}
-                    />
-                  </div>
+                  {/* Saved Addresses List */}
+                  {!showNewAddressForm && savedAddresses.length > 0 && (
+                    <div className="space-y-4 mb-6">
+                      {savedAddresses.map((addr) => (
+                        <div
+                          className={`p-4 border rounded-lg cursor-pointer transition-colors ${selectedAddressId === addr._id ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/50'}`}
+                          key={addr._id}
+                          onClick={() => handleAddressSelect(addr._id)}
+                        >
+                          <div className="flex items-start gap-3">
+                            <div className={`w-4 h-4 rounded-full border mt-1 flex items-center justify-center ${selectedAddressId === addr._id ? 'border-primary' : 'border-muted-foreground'}`}>
+                              {selectedAddressId === addr._id && <div className="w-2 h-2 rounded-full bg-primary" />}
+                            </div>
+                            <div>
+                              <p className="font-medium">{addr.fullName} <span className="text-muted-foreground font-normal">({addr.phone})</span></p>
+                              <p className="text-sm text-muted-foreground mt-1">
+                                {addr.addressLine}, {addr.city}, {addr.state} - {addr.pincode}
+                              </p>
+                              {addr.isDefault && <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded mt-2 inline-block">Default</span>}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
 
-                  <div className="space-y-2">
-                    <Label htmlFor="address">Address</Label>
-                    <Input
-                      id="address"
-                      name="address"
-                      value={formData.address}
-                      onChange={handleChange}
-                      placeholder="Street address, building, floor"
-                      disabled={isLoading}
-                    />
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="city">City</Label>
-                      <Input
-                        id="city"
-                        name="city"
-                        value={formData.city}
-                        onChange={handleChange}
-                        placeholder="City"
-                        disabled={isLoading}
-                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="w-full"
+                        onClick={handleAddNewAddress}
+                      >
+                        + Add Another Address
+                      </Button>
                     </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="state">State</Label>
-                      <Input
-                        id="state"
-                        name="state"
-                        value={formData.state}
-                        onChange={handleChange}
-                        placeholder="State"
-                        disabled={isLoading}
-                      />
-                    </div>
-                  </div>
+                  )}
 
-                  <div className="space-y-2">
-                    <Label htmlFor="pincode">Pincode</Label>
-                    <Input
-                      id="pincode"
-                      name="pincode"
-                      value={formData.pincode}
-                      onChange={handleChange}
-                      placeholder="6-digit pincode"
-                      maxLength={6}
-                      disabled={isLoading}
-                    />
-                  </div>
+                  {/* New Address Form */}
+                  {showNewAddressForm && (
+                    <div className="space-y-4 animate-fade-in">
+                      {savedAddresses.length > 0 && (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="mb-2 p-0 h-auto hover:bg-transparent text-muted-foreground hover:text-primary"
+                          onClick={() => {
+                            setShowNewAddressForm(false);
+                            if (!selectedAddressId && savedAddresses.length > 0) {
+                              setSelectedAddressId(savedAddresses[0]._id);
+                            }
+                          }}
+                        >
+                          <ArrowLeft className="w-3 h-3 mr-1" /> Back to saved addresses
+                        </Button>
+                      )}
+
+                      <div className="space-y-2">
+                        <Label htmlFor="fullName">Full Name</Label>
+                        <Input
+                          id="fullName"
+                          name="fullName"
+                          value={formData.fullName}
+                          onChange={handleChange}
+                          placeholder="Enter your full name"
+                          disabled={isLoading}
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="phone">Phone Number</Label>
+                        <Input
+                          id="phone"
+                          name="phone"
+                          type="tel"
+                          value={formData.phone}
+                          onChange={handleChange}
+                          placeholder="+91 98765 43210"
+                          disabled={isLoading}
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="address">Address</Label>
+                        <Input
+                          id="address"
+                          name="address"
+                          value={formData.address}
+                          onChange={handleChange}
+                          placeholder="Street address, building, floor"
+                          disabled={isLoading}
+                        />
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="city">City</Label>
+                          <Input
+                            id="city"
+                            name="city"
+                            value={formData.city}
+                            onChange={handleChange}
+                            placeholder="City"
+                            disabled={isLoading}
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="state">State</Label>
+                          <Input
+                            id="state"
+                            name="state"
+                            value={formData.state}
+                            onChange={handleChange}
+                            placeholder="State"
+                            disabled={isLoading}
+                          />
+                        </div>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="pincode">Pincode</Label>
+                        <Input
+                          id="pincode"
+                          name="pincode"
+                          value={formData.pincode}
+                          onChange={handleChange}
+                          placeholder="6-digit pincode"
+                          maxLength={6}
+                          disabled={isLoading}
+                        />
+                      </div>
+
+                      <div className="flex items-center gap-2 pt-2">
+                        <input
+                          type="checkbox"
+                          id="saveAddress"
+                          className="w-4 h-4 rounded border-gray-300 text-primary focus:ring-primary"
+                          checked={saveNewAddress}
+                          onChange={(e) => setSaveNewAddress(e.target.checked)}
+                        />
+                        <Label htmlFor="saveAddress" className="cursor-pointer font-normal">Save this address for future orders</Label>
+                      </div>
+                    </div>
+                  )}
 
                   <Button type="submit" size="lg" className="w-full mt-6" disabled={isLoading}>
                     {isLoading ? (

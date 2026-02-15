@@ -9,26 +9,38 @@ const userSchema = new mongoose.Schema(
             trim: true
         },
 
-    email: {
-        type: String,
-        required: true,
-        unique: true,
-        lowercase: true
-    },
+        email: {
+            type: String,
+            required: true,
+            unique: true,
+            lowercase: true
+        },
 
-    password: {
-        type: String,
-        required: true,
-        minlength: 6
-    },
+        password: {
+            type: String,
+            required: true,
+            minlength: 6
+        },
 
-    role: {
-        type: String,
-        enum: ["USER", "ADMIN"],
-        default: "USER"
-    }
+        role: {
+            type: String,
+            enum: ["USER", "ADMIN"],
+            default: "USER"
+        },
+
+        addresses: [
+            {
+                fullName: { type: String, required: true },
+                phone: { type: String, required: true },
+                addressLine: { type: String, required: true },
+                city: { type: String, required: true },
+                state: { type: String, required: true },
+                pincode: { type: String, required: true },
+                isDefault: { type: Boolean, default: false }
+            }
+        ]
     },
-  { timestamps: true }
+    { timestamps: true }
 );
 
 /* Hash password before saving */

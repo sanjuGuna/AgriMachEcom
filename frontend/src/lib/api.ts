@@ -60,6 +60,12 @@ export const machineAPI = {
   delete: (id: string) => api.delete(`/api/machines/${id}`),
 };
 
+// User APIs
+export const userAPI = {
+  getProfile: () => api.get('/api/users/me'),
+  addAddress: (data: any) => api.post('/api/users/addresses', data),
+};
+
 // Order APIs (Admin)
 export const orderAPI = {
   getAll: () => api.get('/api/orders'),
