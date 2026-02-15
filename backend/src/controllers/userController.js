@@ -13,7 +13,7 @@ const getUserProfile = async (req, res) => {
     }
 };
 
-/* ADD NEW ADDRESS */
+/* ADD NEW ADDRESS During checkout,enabling user to maintain multiple addresses*/
 const addAddress = async (req, res) => {
     try {
         const { fullName, phone, addressLine, city, state, pincode, isDefault } = req.body;
