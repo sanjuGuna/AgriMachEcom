@@ -43,7 +43,7 @@ const Checkout: React.FC = () => {
   const [orderPlaced, setOrderPlaced] = useState(false);
 
   const { cartItems, getTotalPrice, clearCart } = useCart();
-  const { user, isAuthenticated, token } = useAuth();
+  const { user, isAuthenticated, token, isLoading: authLoading } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -194,13 +194,30 @@ const Checkout: React.FC = () => {
 
   // ... (navigation guards remain same)
 
-  if (!isAuthenticated) {
-    navigate('/login', { state: { from: '/checkout' } });
-    return null;
+  // Handle redirects in useEffect to avoid render-phase side effects
+  React.useEffect(() => {
+    if (!authLoading) {
+      if (!isAuthenticated) {
+        navigate('/login', { state: { from: '/checkout' } });
+      } else if (cartItems.length === 0 && !orderPlaced) {
+        navigate('/cart');
+      }
+    }
+  }, [authLoading, isAuthenticated, cartItems, orderPlaced, navigate]);
+
+  // Show loader while checking auth state
+  if (authLoading) {
+    return (
+      <Layout>
+        <div className="flex h-[50vh] items-center justify-center">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+      </Layout>
+    );
   }
 
-  if (cartItems.length === 0 && !orderPlaced) {
-    navigate('/cart');
+  // Prevent rendering content if we're about to redirect
+  if (!isAuthenticated || (cartItems.length === 0 && !orderPlaced)) {
     return null;
   }
 
