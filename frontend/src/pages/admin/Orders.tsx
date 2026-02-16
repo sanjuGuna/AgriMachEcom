@@ -25,6 +25,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
 } from '@/components/ui/dialog';
 import {
   Select,
@@ -168,15 +169,15 @@ const Orders: React.FC = () => {
   const canChangeStatus = (order: Order, newStatus: string) => {
     // Delivered orders cannot be changed
     if (order.status === 'DELIVERED') return false;
-    
+
     // Can only mark as delivered if payment is PAID
     if (newStatus === 'DELIVERED' && order.paymentStatus !== 'PAID') return false;
-    
+
     // Valid transitions: PLACED -> SHIPPED -> DELIVERED
     const statusOrder = ['PLACED', 'SHIPPED', 'DELIVERED'];
     const currentIndex = statusOrder.indexOf(order.status);
     const newIndex = statusOrder.indexOf(newStatus);
-    
+
     return newIndex > currentIndex;
   };
 
@@ -333,6 +334,9 @@ const Orders: React.FC = () => {
               <DialogTitle>
                 Order #{selectedOrder?._id.slice(-6).toUpperCase()}
               </DialogTitle>
+              <DialogDescription>
+                View details for order #{selectedOrder?._id.slice(-6).toUpperCase()}
+              </DialogDescription>
             </DialogHeader>
 
             {selectedOrder && (
