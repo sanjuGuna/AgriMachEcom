@@ -15,7 +15,7 @@ import { machineAPI, orderAPI } from '@/lib/api';
 
 interface Order {
   _id: string;
-  status: string;
+  orderStatus: string;
   paymentStatus: string;
 }
 
@@ -38,8 +38,8 @@ const Dashboard: React.FC = () => {
 
   const totalMachines = machinesData?.length || 0;
   const totalOrders = ordersData?.length || 0;
-  const deliveredOrders = ordersData?.filter((o: Order) => o.status === 'DELIVERED').length || 0;
-  const pendingOrders = ordersData?.filter((o: Order) => o.status !== 'DELIVERED').length || 0;
+  const deliveredOrders = ordersData?.filter((o: Order) => o.orderStatus === 'DELIVERED').length || 0;
+  const pendingOrders = ordersData?.filter((o: Order) => o.orderStatus !== 'DELIVERED').length || 0;
 
   const isLoading = machinesLoading || ordersLoading;
 
@@ -63,14 +63,14 @@ const Dashboard: React.FC = () => {
       value: deliveredOrders,
       icon: TruckIcon,
       color: 'bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400',
-      link: '/admin/orders',
+      link: '/admin/orders?status=DELIVERED',
     },
     {
       title: 'Pending',
       value: pendingOrders,
       icon: Clock,
       color: 'bg-amber-100 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400',
-      link: '/admin/orders',
+      link: '/admin/orders?status=PENDING',
     },
   ];
 
@@ -169,19 +169,18 @@ const Dashboard: React.FC = () => {
                           Order #{order._id.slice(-6).toUpperCase()}
                         </p>
                         <p className="text-xs text-muted-foreground">
-                          {order.status}
+                          {order.orderStatus}
                         </p>
                       </div>
                       <span
-                        className={`text-xs px-2 py-1 rounded-full ${
-                          order.status === 'DELIVERED'
+                        className={`text-xs px-2 py-1 rounded-full ${order.orderStatus === 'DELIVERED'
                             ? 'bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400'
-                            : order.status === 'SHIPPED'
-                            ? 'bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400'
-                            : 'bg-amber-100 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400'
-                        }`}
+                            : order.orderStatus === 'SHIPPED'
+                              ? 'bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400'
+                              : 'bg-amber-100 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400'
+                          }`}
                       >
-                        {order.status}
+                        {order.orderStatus}
                       </span>
                     </div>
                   ))}

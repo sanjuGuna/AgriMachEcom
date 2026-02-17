@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useSearchParams } from 'react-router-dom';
 import {
   Search,
   Loader2,
@@ -8,6 +9,7 @@ import {
   Package,
   Truck,
   CheckCircle,
+  Filter,
 } from 'lucide-react';
 import AdminLayout from '@/components/AdminLayout';
 import { Button } from '@/components/ui/button';
@@ -58,7 +60,7 @@ interface Order {
   items: OrderItem[];
   totalAmount: number;
   paymentStatus: 'PENDING' | 'PAID' | 'FAILED';
-  status: 'PLACED' | 'SHIPPED' | 'DELIVERED';
+  orderStatus: 'PLACED' | 'SHIPPED' | 'DELIVERED';
   deliveryAddress: {
     fullName: string;
     phone: string;
@@ -73,6 +75,9 @@ interface Order {
 const statusOptions = ['PLACED', 'SHIPPED', 'DELIVERED'];
 
 const Orders: React.FC = () => {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const statusFilter = searchParams.get('status');
+
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const queryClient = useQueryClient();
@@ -105,11 +110,27 @@ const Orders: React.FC = () => {
     },
   });
 
-  const filteredOrders = orders?.filter(
-    (order) =>
+  const filteredOrders = orders?.filter((order) => {
+    const matchesSearch =
       order._id.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      order.user?.name?.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+      order.user?.name?.toLowerCase().includes(searchQuery.toLowerCase());
+
+    const matchesStatus = statusFilter
+      ? statusFilter === 'PENDING'
+        ? order.orderStatus !== 'DELIVERED'
+        : order.orderStatus === statusFilter
+      : true;
+
+    return matchesSearch && matchesStatus;
+  });
+
+  const handleStatusFilterChange = (value: string) => {
+    if (value && value !== 'ALL') {
+      setSearchParams({ status: value });
+    } else {
+      setSearchParams({});
+    }
+  };
 
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat('en-IN', {
@@ -168,14 +189,14 @@ const Orders: React.FC = () => {
 
   const canChangeStatus = (order: Order, newStatus: string) => {
     // Delivered orders cannot be changed
-    if (order.status === 'DELIVERED') return false;
+    if (order.orderStatus === 'DELIVERED') return false;
 
     // Can only mark as delivered if payment is PAID
     if (newStatus === 'DELIVERED' && order.paymentStatus !== 'PAID') return false;
 
     // Valid transitions: PLACED -> SHIPPED -> DELIVERED
     const statusOrder = ['PLACED', 'SHIPPED', 'DELIVERED'];
-    const currentIndex = statusOrder.indexOf(order.status);
+    const currentIndex = statusOrder.indexOf(order.orderStatus);
     const newIndex = statusOrder.indexOf(newStatus);
 
     return newIndex > currentIndex;
@@ -183,7 +204,7 @@ const Orders: React.FC = () => {
 
   const getAvailableStatuses = (order: Order) => {
     return statusOptions.filter((status) => {
-      if (status === order.status) return true;
+      if (status === order.orderStatus) return true;
       return canChangeStatus(order, status);
     });
   };
@@ -201,9 +222,9 @@ const Orders: React.FC = () => {
           </p>
         </div>
 
-        {/* Search */}
-        <div className="mb-6">
-          <div className="relative max-w-sm">
+        {/* Filters */}
+        <div className="flex flex-col sm:flex-row gap-4 mb-6">
+          <div className="relative flex-1 max-w-sm">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <Input
               type="text"
@@ -212,6 +233,27 @@ const Orders: React.FC = () => {
               onChange={(e) => setSearchQuery(e.target.value)}
               className="pl-9"
             />
+          </div>
+
+          <div className="w-full sm:w-[200px]">
+            <Select
+              value={statusFilter || 'ALL'}
+              onValueChange={handleStatusFilterChange}
+            >
+              <SelectTrigger>
+                <div className="flex items-center gap-2">
+                  <Filter className="w-4 h-4 text-muted-foreground" />
+                  <SelectValue placeholder="Filter by Status" />
+                </div>
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="ALL">All Orders</SelectItem>
+                <SelectItem value="PLACED">Placed</SelectItem>
+                <SelectItem value="SHIPPED">Shipped</SelectItem>
+                <SelectItem value="DELIVERED">Delivered</SelectItem>
+                <SelectItem value="PENDING">Pending (Not Delivered)</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
         </div>
 
@@ -267,15 +309,15 @@ const Orders: React.FC = () => {
                       </TableCell>
                       <TableCell>
                         <Select
-                          value={order.status}
+                          value={order.orderStatus}
                           onValueChange={(value) =>
                             updateStatusMutation.mutate({ id: order._id, status: value })
                           }
-                          disabled={order.status === 'DELIVERED' || updateStatusMutation.isPending}
+                          disabled={order.orderStatus === 'DELIVERED' || updateStatusMutation.isPending}
                         >
                           <SelectTrigger className="w-[140px]">
                             <div className="flex items-center gap-2">
-                              {getStatusIcon(order.status)}
+                              {getStatusIcon(order.orderStatus)}
                               <SelectValue />
                             </div>
                           </SelectTrigger>
@@ -285,7 +327,7 @@ const Orders: React.FC = () => {
                                 key={status}
                                 value={status}
                                 disabled={
-                                  status !== order.status && !canChangeStatus(order, status)
+                                  status !== order.orderStatus && !canChangeStatus(order, status)
                                 }
                               >
                                 <div className="flex items-center gap-2">
@@ -296,7 +338,7 @@ const Orders: React.FC = () => {
                             ))}
                           </SelectContent>
                         </Select>
-                        {order.paymentStatus !== 'PAID' && order.status !== 'DELIVERED' && (
+                        {order.paymentStatus !== 'PAID' && order.orderStatus !== 'DELIVERED' && (
                           <p className="text-xs text-amber-600 mt-1">
                             Payment required for delivery
                           </p>
@@ -343,8 +385,8 @@ const Orders: React.FC = () => {
               <div className="space-y-6">
                 {/* Status Badges */}
                 <div className="flex gap-2">
-                  <Badge className={getStatusColor(selectedOrder.status)}>
-                    {selectedOrder.status}
+                  <Badge className={getStatusColor(selectedOrder.orderStatus)}>
+                    {selectedOrder.orderStatus}
                   </Badge>
                   <Badge className={getPaymentStatusColor(selectedOrder.paymentStatus)}>
                     {selectedOrder.paymentStatus}
