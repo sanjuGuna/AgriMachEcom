@@ -316,10 +316,7 @@ const Orders: React.FC = () => {
                           disabled={order.orderStatus === 'DELIVERED' || updateStatusMutation.isPending}
                         >
                           <SelectTrigger className="w-[140px]">
-                            <div className="flex items-center gap-2">
-                              {getStatusIcon(order.orderStatus)}
-                              <SelectValue />
-                            </div>
+                            <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
                             {getAvailableStatuses(order).map((status) => (
