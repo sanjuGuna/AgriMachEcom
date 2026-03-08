@@ -1,4 +1,4 @@
-const Machine=require("../models/Machine");
+const Machine = require("../models/Machine");
 
 /* CREATE MACHINE (ADMIN ONLY) POST /api/machines */
 exports.createMachine = async (req, res) => {
@@ -7,8 +7,8 @@ exports.createMachine = async (req, res) => {
 
     // Basic validation
     if (!name || !category || !price || !description || stock === undefined) {
-      return res.status(400).json({ 
-        message: "All fields are required" 
+      return res.status(400).json({
+        message: "All fields are required"
       });
     }
 
@@ -18,7 +18,20 @@ exports.createMachine = async (req, res) => {
       });
     }
 
-    const images=req.files.map(file=>file.path)
+    const images = req.files.map(file => file.path)
+
+    // Parse specifications if it's a string (from FormData)
+    let parsedSpecifications = [];
+    if (req.body.specifications) {
+      try {
+        parsedSpecifications = typeof req.body.specifications === 'string'
+          ? JSON.parse(req.body.specifications)
+          : req.body.specifications;
+      } catch (err) {
+        console.error("Error parsing specifications:", err);
+      }
+    }
+
     const machine = await Machine.create({
       name,
       category,
@@ -26,6 +39,7 @@ exports.createMachine = async (req, res) => {
       description,
       images,//urls
       stock,
+      specifications: parsedSpecifications,
       createdBy: req.user._id // admin id from JWT
     });
 
@@ -103,12 +117,41 @@ exports.updateMachine = async (req, res) => {
     }
 
     // Update allowed fields
-    const fields = ["name", "category", "price", "description", "images", "stock"];
+    const fields = ["name", "category", "price", "description", "stock", "specifications"];
     fields.forEach(field => {
       if (req.body[field] !== undefined) {
-        machine[field] = req.body[field];
+        if (field === 'specifications' && typeof req.body[field] === 'string') {
+          try {
+            machine[field] = JSON.parse(req.body[field]);
+          } catch (err) {
+            console.error("Error parsing specifications in update:", err);
+          }
+        } else {
+          machine[field] = req.body[field];
+        }
       }
     });
+
+    // Handle images
+    let updatedImages = [];
+    if (req.body.existingImages) {
+      try {
+        updatedImages = JSON.parse(req.body.existingImages);
+      } catch (err) {
+        console.error("Error parsing existingImages:", err);
+        updatedImages = machine.images;
+      }
+    } else {
+      updatedImages = machine.images;
+    }
+
+    // Add new images if uploaded
+    if (req.files && req.files.length > 0) {
+      const newImages = req.files.map(file => file.path);
+      updatedImages = [...updatedImages, ...newImages];
+    }
+
+    machine.images = updatedImages;
 
     await machine.save();
 

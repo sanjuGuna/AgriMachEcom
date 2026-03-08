@@ -43,7 +43,14 @@ const machineSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
       required: true
-    }
+    },
+
+    specifications: [
+      {
+        key: { type: String, required: true },
+        value: { type: String, required: true }
+      }
+    ]
   },
   { timestamps: true }
 );

@@ -19,6 +19,7 @@ interface Machine {
   price: number;
   stock: number;
   images: string[];
+  specifications?: { key: string; value: string }[];
 }
 
 const MachineDetails: React.FC = () => {
@@ -193,6 +194,32 @@ const MachineDetails: React.FC = () => {
                 </li>
               </ul>
             </div>
+
+            {/* Specifications */}
+            {machine.specifications && machine.specifications.length > 0 && (
+              <div className="mt-8 pt-8 border-t border-border">
+                <h3 className="font-display font-semibold text-lg mb-4">Technical Specifications</h3>
+                <div className="bg-muted/30 rounded-lg overflow-hidden border border-border">
+                  <table className="w-full text-sm">
+                    <tbody>
+                      {machine.specifications.map((spec, index) => (
+                        <tr
+                          key={index}
+                          className={index !== machine.specifications!.length - 1 ? "border-b border-border/50" : ""}
+                        >
+                          <td className="px-4 py-3 font-medium text-foreground bg-muted/50 w-1/3">
+                            {spec.key}
+                          </td>
+                          <td className="px-4 py-3 text-muted-foreground w-2/3">
+                            {spec.value}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>

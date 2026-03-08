@@ -30,12 +30,18 @@ const categories = [
   'Other',
 ];
 
+interface Specification {
+  key: string;
+  value: string;
+}
+
 interface MachineFormData {
   name: string;
   category: string;
   price: string;
   description: string;
   stock: string;
+  specifications: Specification[];
 }
 
 const MachineForm: React.FC = () => {
@@ -50,6 +56,7 @@ const MachineForm: React.FC = () => {
     price: '',
     description: '',
     stock: '',
+    specifications: [],
   });
   const [images, setImages] = useState<File[]>([]);
   const [existingImages, setExistingImages] = useState<string[]>([]);
@@ -74,6 +81,7 @@ const MachineForm: React.FC = () => {
         price: machineData.price?.toString() || '',
         description: machineData.description || '',
         stock: machineData.stock?.toString() || '',
+        specifications: machineData.specifications || [],
       });
       setExistingImages(machineData.images || []);
     }
@@ -83,7 +91,7 @@ const MachineForm: React.FC = () => {
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
     const totalImages = images.length + existingImages.length + files.length;
-    
+
     if (totalImages > 4) {
       toast({
         variant: 'destructive',
@@ -104,7 +112,7 @@ const MachineForm: React.FC = () => {
   const removeImage = (index: number) => {
     const newImages = images.filter((_, i) => i !== index);
     setImages(newImages);
-    
+
     // Revoke old URL and create new previews
     URL.revokeObjectURL(previewUrls[index]);
     setPreviewUrls(newImages.map((file) => URL.createObjectURL(file)));
@@ -184,6 +192,7 @@ const MachineForm: React.FC = () => {
     formPayload.append('price', formData.price);
     formPayload.append('description', formData.description);
     formPayload.append('stock', formData.stock);
+    formPayload.append('specifications', JSON.stringify(formData.specifications));
 
     // Append images
     images.forEach((image) => {
@@ -320,10 +329,78 @@ const MachineForm: React.FC = () => {
                 />
               </div>
 
+              {/* Specifications */}
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <Label>Machine Specifications</Label>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      const newSpecs = [...formData.specifications, { key: '', value: '' }];
+                      setFormData({ ...formData, specifications: newSpecs });
+                    }}
+                  >
+                    Add Specification
+                  </Button>
+                </div>
+
+                {formData.specifications.length > 0 ? (
+                  <div className="space-y-3">
+                    {formData.specifications.map((spec, index) => (
+                      <div key={index} className="flex gap-3 items-end">
+                        <div className="flex-1 space-y-2">
+                          {index === 0 && <Label className="text-xs">Field Name</Label>}
+                          <Input
+                            placeholder="e.g. Horsepower"
+                            value={spec.key}
+                            onChange={(e) => {
+                              const newSpecs = [...formData.specifications];
+                              newSpecs[index].key = e.target.value;
+                              setFormData({ ...formData, specifications: newSpecs });
+                            }}
+                          />
+                        </div>
+                        <div className="flex-1 space-y-2">
+                          {index === 0 && <Label className="text-xs">Value</Label>}
+                          <Input
+                            placeholder="e.g. 5 HP"
+                            value={spec.value}
+                            onChange={(e) => {
+                              const newSpecs = [...formData.specifications];
+                              newSpecs[index].value = e.target.value;
+                              setFormData({ ...formData, specifications: newSpecs });
+                            }}
+                          />
+                        </div>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          disabled={index === 0 && formData.specifications.length === 1 && !spec.key && !spec.value}
+                          onClick={() => {
+                            const newSpecs = formData.specifications.filter((_, i) => i !== index);
+                            setFormData({ ...formData, specifications: newSpecs });
+                          }}
+                          className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                        >
+                          <X className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center p-4 border rounded-lg bg-muted/30">
+                    <p className="text-sm text-muted-foreground">No specifications added yet.</p>
+                  </div>
+                )}
+              </div>
+
               {/* Images */}
               <div className="space-y-4">
                 <Label>Images (3-4 recommended) *</Label>
-                
+
                 {/* Existing Images */}
                 {existingImages.length > 0 && (
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
@@ -408,7 +485,7 @@ const MachineForm: React.FC = () => {
                   {isSubmitting ? (
                     <>
                       <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                      {isEditing ? 'Updating...' : 'Creating...' }
+                      {isEditing ? 'Updating...' : 'Creating...'}
                     </>
                   ) : isEditing ? (
                     'Update Machine'
