@@ -19,8 +19,10 @@ import { machineAPI } from '@/lib/api';
 import { useToast } from '@/hooks/use-toast';
 
 const categories = [
-  'Tractors',
-  'Harvesters',
+  'Power Weeder',
+  'Power Sprayer',
+  'Power Tiller',
+  'Chaff Cutter',
   'Plows',
   'Seeders',
   'Sprayers',
