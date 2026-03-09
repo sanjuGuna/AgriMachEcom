@@ -18,6 +18,7 @@ import Dashboard from "./pages/admin/Dashboard";
 import Machines from "./pages/admin/Machines";
 import MachineForm from "./pages/admin/MachineForm";
 import Orders from "./pages/admin/Orders";
+import Reports from "./pages/admin/Reports";
 import MyOrders from "./pages/MyOrders"
 import { Outlet } from "react-router-dom";
 
@@ -45,7 +46,7 @@ const App = () => (
               <Route path="/register" element={<Register />} />
               <Route path="/cart" element={<Cart />} />
               <Route path="/checkout" element={<Checkout />} />
-              <Route path="/my-orders" element={<MyOrders/>} />
+              <Route path="/my-orders" element={<MyOrders />} />
               {/* Admin Routes */}
               <Route
                 path="/admin"
@@ -62,6 +63,7 @@ const App = () => (
                 <Route path="machines/new" element={<MachineForm />} />
                 <Route path="machines/edit/:id" element={<MachineForm />} />
                 <Route path="orders" element={<Orders />} />
+                <Route path="reports" element={<Reports />} />
               </Route>
 
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

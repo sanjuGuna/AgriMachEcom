@@ -1,6 +1,5 @@
 import axios from 'axios';
-
-const API_BASE_URL = 'http://localhost:5000';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
 const api = axios.create({
   baseURL: API_BASE_URL,
@@ -72,6 +71,17 @@ export const orderAPI = {
   getById: (id: string) => api.get(`/api/orders/${id}`),
   updateStatus: (id: string, status: string) =>
     api.put(`/api/orders/${id}/status`, { status }),
+};
+
+// Report APIs (Admin)
+export const reportAPI = {
+  getSales: () => api.get('/api/reports/sales'),
+  getProducts: () => api.get('/api/reports/products'),
+  getCustomers: () => api.get('/api/reports/customers'),
+  getOrderStatus: () => api.get('/api/reports/order-status'),
+  getPayments: () => api.get('/api/reports/payments'),
+  getInventory: () => api.get('/api/reports/inventory'),
+  getSeasonal: () => api.get('/api/reports/seasonal'),
 };
 
 export default api;

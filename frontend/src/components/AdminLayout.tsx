@@ -5,6 +5,7 @@ import {
   LayoutDashboard,
   Tractor,
   Package,
+  BarChart,
   LogOut,
   Menu,
   X,
@@ -21,6 +22,7 @@ const navItems = [
   { title: 'Dashboard', href: '/admin', icon: LayoutDashboard },
   { title: 'Machines', href: '/admin/machines', icon: Tractor },
   { title: 'Orders', href: '/admin/orders', icon: Package },
+  { title: 'Reports', href: '/admin/reports', icon: BarChart },
 ];
 
 const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
