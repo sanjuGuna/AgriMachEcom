@@ -66,55 +66,6 @@ exports.getProductPerformanceReport = async (req, res) => {
     }
 };
 
-// @desc    Get Farmer/Seller Report
-// @route   GET /api/reports/sellers
-exports.getFarmerReport = async (req, res) => {
-    try {
-        const farmerData = await Order.aggregate([
-            { $match: { paymentStatus: "PAID" } },
-            { $unwind: "$items" },
-            {
-                $lookup: {
-                    from: "machines",
-                    localField: "items.machineId",
-                    foreignField: "_id",
-                    as: "machine",
-                },
-            },
-            { $unwind: "$machine" },
-            {
-                $group: {
-                    _id: "$machine.createdBy",
-                    totalSales: { $sum: { $multiply: ["$items.price", "$items.quantity"] } },
-                    productsSold: { $sum: "$items.quantity" },
-                },
-            },
-            {
-                $lookup: {
-                    from: "users",
-                    localField: "_id",
-                    foreignField: "_id",
-                    as: "sellerDetails",
-                },
-            },
-            { $unwind: "$sellerDetails" },
-            {
-                $project: {
-                    sellerName: "$sellerDetails.name",
-                    sellerEmail: "$sellerDetails.email",
-                    totalSales: 1,
-                    productsSold: 1,
-                },
-            },
-            { $sort: { totalSales: -1 } },
-        ]);
-
-        res.json(farmerData);
-    } catch (error) {
-        res.status(500).json({ message: error.message });
-    }
-};
-
 // @desc    Get Customer Report
 // @route   GET /api/reports/customers
 exports.getCustomerReport = async (req, res) => {

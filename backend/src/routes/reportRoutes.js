@@ -3,7 +3,6 @@ const router = express.Router();
 const {
     getSalesReport,
     getProductPerformanceReport,
-    getFarmerReport,
     getCustomerReport,
     getOrderStatusReport,
     getPaymentReport,
@@ -17,7 +16,6 @@ router.use(protect, adminOnly);
 
 router.get("/sales", getSalesReport);
 router.get("/products", getProductPerformanceReport);
-router.get("/sellers", getFarmerReport);
 router.get("/customers", getCustomerReport);
 router.get("/order-status", getOrderStatusReport);
 router.get("/payments", getPaymentReport);
