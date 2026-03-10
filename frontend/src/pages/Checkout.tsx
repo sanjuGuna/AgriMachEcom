@@ -12,7 +12,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import axios from 'axios';
 
-import { userAPI } from '@/lib/api';
+import { userAPI, orderAPI } from '@/lib/api';
 
 interface Address {
   _id: string;
@@ -168,11 +168,7 @@ const Checkout: React.FC = () => {
         deliveryAddress
       };
 
-      await axios.post('http://localhost:5000/api/orders', orderData, {
-        headers: {
-          Authorization: `Bearer ${token}`
-        }
-      });
+      await orderAPI.create(orderData);
 
       setOrderPlaced(true);
       clearCart();

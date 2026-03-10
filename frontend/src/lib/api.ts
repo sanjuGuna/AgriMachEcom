@@ -1,6 +1,10 @@
 import axios from 'axios';
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
+if (!API_BASE_URL) {
+  console.warn('VITE_API_BASE_URL is not defined. API requests may fail or point to the current origin.');
+}
+
 const api = axios.create({
   baseURL: API_BASE_URL,
   headers: {
@@ -65,10 +69,12 @@ export const userAPI = {
   addAddress: (data: any) => api.post('/api/users/addresses', data),
 };
 
-// Order APIs (Admin)
+// Order APIs
 export const orderAPI = {
   getAll: () => api.get('/api/orders'),
   getById: (id: string) => api.get(`/api/orders/${id}`),
+  getMyOrders: () => api.get('/api/orders/my'),
+  create: (data: any) => api.post('/api/orders', data),
   updateStatus: (id: string, status: string) =>
     api.put(`/api/orders/${id}/status`, { status }),
 };

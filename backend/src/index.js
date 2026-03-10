@@ -5,8 +5,10 @@ const cors = require("cors");
 const connectDB = require("./config/db");
 connectDB();
 
+const frontendUrl = process.env.FRONTEND_URL?.replace(/\/$/, "");
+
 const corsOptions = {
-  origin: [process.env.FRONTEND_URL,"http://localhost:8080"],
+  origin: [frontendUrl, "http://localhost:8080"],
   credentials: true,
 }
 app.use(cors(corsOptions));

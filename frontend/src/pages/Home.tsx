@@ -150,7 +150,7 @@ const Home: React.FC = () => {
             <div className="text-center py-20 bg-destructive/10 rounded-xl">
               <p className="text-destructive font-medium mb-2">Failed to load machinery</p>
               <p className="text-muted-foreground text-sm">
-                Please ensure the backend server is running on http://localhost:5000
+                The technical team is working on it. Please try again later.
               </p>
             </div>
           )}

@@ -7,6 +7,7 @@ import { useToast } from '@/hooks/use-toast';
 import OrderCard from '@/components/orders/OrderCard';
 import OrderEmpty from '@/components/orders/OrderEmpty';
 import OrderLoader from '@/components/orders/OrderLoader';
+import { orderAPI } from '@/lib/api';
 
 const formatPrice = (price: number) =>
     new Intl.NumberFormat('en-IN', {
@@ -37,10 +38,7 @@ const MyOrders = () => {
 
         const fetchOrders = async () => {
             try {
-                const { data } = await axios.get(
-                    'http://localhost:5000/api/orders/my',
-                    { headers: { Authorization: `Bearer ${token}` } }
-                );
+                const { data } = await orderAPI.getMyOrders();
                 setOrders(data);
             } catch (error: any) {
                 toast({
