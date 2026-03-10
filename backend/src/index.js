@@ -6,7 +6,7 @@ const connectDB = require("./config/db");
 connectDB();
 
 const corsOptions = {
-  origin: "http://localhost:8080",
+  origin: [process.env.FRONTEND_URL,"http://localhost:8080"],
   credentials: true,
 }
 app.use(cors(corsOptions));
