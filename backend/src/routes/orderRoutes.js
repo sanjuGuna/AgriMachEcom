@@ -3,6 +3,7 @@ const router = express.Router();
 
 const {
   createOrder,
+  verifyPayment,
   getMyOrders,
   getAllOrders,
   getOrderById,
@@ -12,6 +13,7 @@ const {
 const { protect, adminOnly } = require("../middleware/authMiddleware");
 
 router.post("/", protect, createOrder);
+router.post("/verify-payment", protect, verifyPayment);
 router.get("/my", protect, getMyOrders);
 router.get("/", protect, adminOnly, getAllOrders);
 router.get("/:id", protect, getOrderById);

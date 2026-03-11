@@ -75,6 +75,7 @@ export const orderAPI = {
   getById: (id: string) => api.get(`/api/orders/${id}`),
   getMyOrders: () => api.get('/api/orders/my'),
   create: (data: any) => api.post('/api/orders', data),
+  verifyPayment: (data: any) => api.post('/api/orders/verify-payment', data),
   updateStatus: (id: string, status: string) =>
     api.put(`/api/orders/${id}/status`, { status }),
 };

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Loader2, CheckCircle, MapPin } from 'lucide-react';
+import { ArrowLeft, Loader2, CheckCircle, MapPin, CreditCard, Truck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -10,7 +10,6 @@ import Layout from '@/components/Layout';
 import { useCart } from '@/contexts/CartContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
-import axios from 'axios';
 
 import { userAPI, orderAPI } from '@/lib/api';
 
@@ -25,6 +24,22 @@ interface Address {
   isDefault: boolean;
 }
 
+type PaymentMethod = 'COD' | 'ONLINE';
+
+// ─── Razorpay script loader ───────────────────────────────────────────────────
+function loadRazorpayScript(): Promise<boolean> {
+  return new Promise((resolve) => {
+    if (document.getElementById('razorpay-sdk')) return resolve(true);
+    const script = document.createElement('script');
+    script.id = 'razorpay-sdk';
+    script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+    script.onload = () => resolve(true);
+    script.onerror = () => resolve(false);
+    document.body.appendChild(script);
+  });
+}
+
+// ─── Component ────────────────────────────────────────────────────────────────
 const Checkout: React.FC = () => {
   const [formData, setFormData] = useState({
     fullName: '',
@@ -38,12 +53,13 @@ const Checkout: React.FC = () => {
   const [selectedAddressId, setSelectedAddressId] = useState<string | null>(null);
   const [showNewAddressForm, setShowNewAddressForm] = useState(false);
   const [saveNewAddress, setSaveNewAddress] = useState(false);
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('COD');
 
   const [isLoading, setIsLoading] = useState(false);
   const [orderPlaced, setOrderPlaced] = useState(false);
 
   const { cartItems, getTotalPrice, clearCart } = useCart();
-  const { user, isAuthenticated, token, isLoading: authLoading } = useAuth();
+  const { user, isAuthenticated, isLoading: authLoading } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -54,39 +70,36 @@ const Checkout: React.FC = () => {
         if (data.addresses && data.addresses.length > 0) {
           setSavedAddresses(data.addresses);
           const defaultAddr = data.addresses.find((a: Address) => a.isDefault);
-          if (defaultAddr) {
-            setSelectedAddressId(defaultAddr._id);
-          } else {
-            setSelectedAddressId(data.addresses[0]._id);
-          }
+          setSelectedAddressId(
+            defaultAddr ? defaultAddr._id : data.addresses[0]._id
+          );
         } else {
           setShowNewAddressForm(true);
         }
-      } catch (error) {
-        console.error("Failed to fetch profile", error);
+      } catch {
         setShowNewAddressForm(true);
       }
     };
-
-    if (isAuthenticated) {
-      fetchProfile();
-    }
+    if (isAuthenticated) fetchProfile();
   }, [isAuthenticated]);
 
-  const formatPrice = (price: number) => {
-    return new Intl.NumberFormat('en-IN', {
+  // Redirect guards
+  React.useEffect(() => {
+    if (!authLoading) {
+      if (!isAuthenticated) navigate('/login', { state: { from: '/checkout' } });
+      else if (cartItems.length === 0 && !orderPlaced) navigate('/cart');
+    }
+  }, [authLoading, isAuthenticated, cartItems, orderPlaced, navigate]);
+
+  const formatPrice = (price: number) =>
+    new Intl.NumberFormat('en-IN', {
       style: 'currency',
       currency: 'INR',
       maximumFractionDigits: 0,
     }).format(price);
-  };
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setFormData((prev) => ({
-      ...prev,
-      [e.target.name]: e.target.value,
-    }));
-  };
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) =>
+    setFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }));
 
   const handleAddressSelect = (id: string) => {
     setSelectedAddressId(id);
@@ -96,88 +109,72 @@ const Checkout: React.FC = () => {
   const handleAddNewAddress = () => {
     setSelectedAddressId(null);
     setShowNewAddressForm(true);
-    setFormData({
-      fullName: '',
-      phone: '',
-      address: '',
-      city: '',
-      state: '',
-      pincode: '',
-    });
+    setFormData({ fullName: '', phone: '', address: '', city: '', state: '', pincode: '' });
   };
 
+  // ─── Build delivery address object ─────────────────────────────────────────
+  const getDeliveryAddress = (): Record<string, string> | null => {
+    if (showNewAddressForm) {
+      const { fullName, phone, address, city, state, pincode } = formData;
+      if (!fullName || !phone || !address || !city || !state || !pincode) return null;
+      return { fullName, phone, addressLine: address, city, state, pincode };
+    }
+    const selected = savedAddresses.find((a) => a._id === selectedAddressId);
+    if (!selected) return null;
+    return {
+      fullName: selected.fullName,
+      phone: selected.phone,
+      addressLine: selected.addressLine,
+      city: selected.city,
+      state: selected.state,
+      pincode: selected.pincode,
+    };
+  };
+
+  // ─── Handle order placement ─────────────────────────────────────────────────
   const handlePlaceOrder = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    let deliveryAddress;
-
-    if (showNewAddressForm) {
-      const { fullName, phone, address, city, state, pincode } = formData;
-      if (!fullName || !phone || !address || !city || !state || !pincode) {
-        toast({
-          title: 'Validation Error',
-          description: 'Please fill in all delivery details',
-          variant: 'destructive',
-        });
-        return;
-      }
-      deliveryAddress = {
-        fullName,
-        phone,
-        addressLine: address,
-        city,
-        state,
-        pincode
-      };
-    } else {
-      const selected = savedAddresses.find(a => a._id === selectedAddressId);
-      if (!selected) {
-        toast({
-          title: 'Error',
-          description: 'Please select an address',
-          variant: 'destructive',
-        });
-        return;
-      }
-      deliveryAddress = {
-        fullName: selected.fullName,
-        phone: selected.phone,
-        addressLine: selected.addressLine,
-        city: selected.city,
-        state: selected.state,
-        pincode: selected.pincode
-      };
+    const deliveryAddress = getDeliveryAddress();
+    if (!deliveryAddress) {
+      toast({
+        title: 'Validation Error',
+        description: showNewAddressForm
+          ? 'Please fill in all delivery details'
+          : 'Please select an address',
+        variant: 'destructive',
+      });
+      return;
     }
 
     setIsLoading(true);
 
     try {
-      // Save address if requested
+      // Save new address if requested
       if (showNewAddressForm && saveNewAddress) {
         await userAPI.addAddress({
           ...deliveryAddress,
-          isDefault: savedAddresses.length === 0 // Make default if it's the first one
+          isDefault: savedAddresses.length === 0,
         });
       }
 
-      const orderData = {
-        items: cartItems.map(item => ({
-          machineId: item.machineId,
-          quantity: item.quantity
-        })),
-        deliveryAddress
+      const orderPayload = {
+        items: cartItems.map((item) => ({ machineId: item.machineId, quantity: item.quantity })),
+        deliveryAddress,
+        paymentMethod,
       };
 
-      await orderAPI.create(orderData);
+      const { data } = await orderAPI.create(orderPayload);
 
-      setOrderPlaced(true);
-      clearCart();
-      toast({
-        title: 'Order Placed Successfully!',
-        description: 'You will receive a confirmation email shortly',
-      });
+      if (paymentMethod === 'ONLINE') {
+        await handleRazorpayPayment(data);
+      } else {
+        // COD – order is already confirmed
+        setOrderPlaced(true);
+        clearCart();
+        toast({ title: 'Order Placed!', description: 'Your order will be delivered on delivery.' });
+      }
     } catch (error: any) {
-      console.error('Order placement error:', error);
       toast({
         title: 'Order Failed',
         description: error.response?.data?.message || 'Something went wrong. Please try again.',
@@ -188,20 +185,54 @@ const Checkout: React.FC = () => {
     }
   };
 
-  // ... (navigation guards remain same)
-
-  // Handle redirects in useEffect to avoid render-phase side effects
-  React.useEffect(() => {
-    if (!authLoading) {
-      if (!isAuthenticated) {
-        navigate('/login', { state: { from: '/checkout' } });
-      } else if (cartItems.length === 0 && !orderPlaced) {
-        navigate('/cart');
-      }
+  // ─── Razorpay checkout flow ─────────────────────────────────────────────────
+  const handleRazorpayPayment = async (orderData: any) => {
+    const loaded = await loadRazorpayScript();
+    if (!loaded) {
+      toast({ title: 'Error', description: 'Failed to load Razorpay SDK. Check your network.', variant: 'destructive' });
+      return;
     }
-  }, [authLoading, isAuthenticated, cartItems, orderPlaced, navigate]);
 
-  // Show loader while checking auth state
+    const options: RazorpayOptions = {
+      key: import.meta.env.VITE_RAZORPAY_KEY_ID as string,
+      amount: orderData.amount,
+      currency: orderData.currency,
+      name: 'AgriMach',
+      description: 'Agricultural Machinery Purchase',
+      order_id: orderData.razorpayOrderId,
+      prefill: {
+        name: user?.name ?? '',
+        email: user?.email ?? '',
+      },
+      theme: { color: '#16a34a' },
+      handler: async (response: RazorpayResponse) => {
+        try {
+          await orderAPI.verifyPayment({
+            orderId: orderData.orderId,
+            razorpayOrderId: response.razorpay_order_id,
+            razorpayPaymentId: response.razorpay_payment_id,
+            razorpaySignature: response.razorpay_signature,
+          });
+          setOrderPlaced(true);
+          clearCart();
+          toast({ title: 'Payment Successful!', description: 'Your order has been placed.' });
+        } catch {
+          toast({ title: 'Payment Verification Failed', description: 'Please contact support.', variant: 'destructive' });
+        }
+      },
+      modal: {
+        ondismiss: () => {
+          toast({ title: 'Payment Cancelled', description: 'You cancelled the payment.', variant: 'destructive' });
+          setIsLoading(false);
+        },
+      },
+    };
+
+    const razorpay = new window.Razorpay(options);
+    razorpay.open();
+  };
+
+  // ─── Loading / guard states ─────────────────────────────────────────────────
   if (authLoading) {
     return (
       <Layout>
@@ -212,13 +243,10 @@ const Checkout: React.FC = () => {
     );
   }
 
-  // Prevent rendering content if we're about to redirect
-  if (!isAuthenticated || (cartItems.length === 0 && !orderPlaced)) {
-    return null;
-  }
+  if (!isAuthenticated || (cartItems.length === 0 && !orderPlaced)) return null;
 
+  // ─── Order success screen ───────────────────────────────────────────────────
   if (orderPlaced) {
-    // ... (success view remains same)
     return (
       <Layout>
         <div className="container mx-auto px-4 py-20 text-center">
@@ -248,6 +276,7 @@ const Checkout: React.FC = () => {
     );
   }
 
+  // ─── Main checkout form ─────────────────────────────────────────────────────
   return (
     <Layout>
       <div className="container mx-auto px-4 py-8">
@@ -265,8 +294,9 @@ const Checkout: React.FC = () => {
         <h1 className="font-display text-3xl font-bold text-foreground mb-8">Checkout</h1>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          {/* Delivery Form */}
-          <div>
+          {/* ── Left column ── */}
+          <div className="space-y-6">
+            {/* Delivery Address Card */}
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
@@ -275,32 +305,50 @@ const Checkout: React.FC = () => {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <form onSubmit={handlePlaceOrder} className="space-y-6">
-
-                  {/* Saved Addresses List */}
+                <form onSubmit={handlePlaceOrder} className="space-y-6" id="checkout-form">
+                  {/* Saved Addresses */}
                   {!showNewAddressForm && savedAddresses.length > 0 && (
-                    <div className="space-y-4 mb-6">
+                    <div className="space-y-4 mb-2">
                       {savedAddresses.map((addr) => (
                         <div
-                          className={`p-4 border rounded-lg cursor-pointer transition-colors ${selectedAddressId === addr._id ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/50'}`}
                           key={addr._id}
+                          className={`p-4 border rounded-lg cursor-pointer transition-colors ${selectedAddressId === addr._id
+                              ? 'border-primary bg-primary/5'
+                              : 'border-border hover:border-primary/50'
+                            }`}
                           onClick={() => handleAddressSelect(addr._id)}
                         >
                           <div className="flex items-start gap-3">
-                            <div className={`w-4 h-4 rounded-full border mt-1 flex items-center justify-center ${selectedAddressId === addr._id ? 'border-primary' : 'border-muted-foreground'}`}>
-                              {selectedAddressId === addr._id && <div className="w-2 h-2 rounded-full bg-primary" />}
+                            <div
+                              className={`w-4 h-4 rounded-full border mt-1 flex items-center justify-center ${selectedAddressId === addr._id
+                                  ? 'border-primary'
+                                  : 'border-muted-foreground'
+                                }`}
+                            >
+                              {selectedAddressId === addr._id && (
+                                <div className="w-2 h-2 rounded-full bg-primary" />
+                              )}
                             </div>
                             <div>
-                              <p className="font-medium">{addr.fullName} <span className="text-muted-foreground font-normal">({addr.phone})</span></p>
-                              <p className="text-sm text-muted-foreground mt-1">
-                                {addr.addressLine}, {addr.city}, {addr.state} - {addr.pincode}
+                              <p className="font-medium">
+                                {addr.fullName}{' '}
+                                <span className="text-muted-foreground font-normal">
+                                  ({addr.phone})
+                                </span>
                               </p>
-                              {addr.isDefault && <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded mt-2 inline-block">Default</span>}
+                              <p className="text-sm text-muted-foreground mt-1">
+                                {addr.addressLine}, {addr.city}, {addr.state} -{' '}
+                                {addr.pincode}
+                              </p>
+                              {addr.isDefault && (
+                                <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded mt-2 inline-block">
+                                  Default
+                                </span>
+                              )}
                             </div>
                           </div>
                         </div>
                       ))}
-
                       <Button
                         type="button"
                         variant="outline"
@@ -323,9 +371,8 @@ const Checkout: React.FC = () => {
                           className="mb-2 p-0 h-auto hover:bg-transparent text-muted-foreground hover:text-primary"
                           onClick={() => {
                             setShowNewAddressForm(false);
-                            if (!selectedAddressId && savedAddresses.length > 0) {
+                            if (!selectedAddressId && savedAddresses.length > 0)
                               setSelectedAddressId(savedAddresses[0]._id);
-                            }
                           }}
                         >
                           <ArrowLeft className="w-3 h-3 mr-1" /> Back to saved addresses
@@ -334,79 +381,30 @@ const Checkout: React.FC = () => {
 
                       <div className="space-y-2">
                         <Label htmlFor="fullName">Full Name</Label>
-                        <Input
-                          id="fullName"
-                          name="fullName"
-                          value={formData.fullName}
-                          onChange={handleChange}
-                          placeholder="Enter your full name"
-                          disabled={isLoading}
-                        />
+                        <Input id="fullName" name="fullName" value={formData.fullName} onChange={handleChange} placeholder="Enter your full name" disabled={isLoading} />
                       </div>
-
                       <div className="space-y-2">
                         <Label htmlFor="phone">Phone Number</Label>
-                        <Input
-                          id="phone"
-                          name="phone"
-                          type="tel"
-                          value={formData.phone}
-                          onChange={handleChange}
-                          placeholder="+91 98765 43210"
-                          disabled={isLoading}
-                        />
+                        <Input id="phone" name="phone" type="tel" value={formData.phone} onChange={handleChange} placeholder="+91 98765 43210" disabled={isLoading} />
                       </div>
-
                       <div className="space-y-2">
                         <Label htmlFor="address">Address</Label>
-                        <Input
-                          id="address"
-                          name="address"
-                          value={formData.address}
-                          onChange={handleChange}
-                          placeholder="Street address, building, floor"
-                          disabled={isLoading}
-                        />
+                        <Input id="address" name="address" value={formData.address} onChange={handleChange} placeholder="Street address, building, floor" disabled={isLoading} />
                       </div>
-
                       <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-2">
                           <Label htmlFor="city">City</Label>
-                          <Input
-                            id="city"
-                            name="city"
-                            value={formData.city}
-                            onChange={handleChange}
-                            placeholder="City"
-                            disabled={isLoading}
-                          />
+                          <Input id="city" name="city" value={formData.city} onChange={handleChange} placeholder="City" disabled={isLoading} />
                         </div>
                         <div className="space-y-2">
                           <Label htmlFor="state">State</Label>
-                          <Input
-                            id="state"
-                            name="state"
-                            value={formData.state}
-                            onChange={handleChange}
-                            placeholder="State"
-                            disabled={isLoading}
-                          />
+                          <Input id="state" name="state" value={formData.state} onChange={handleChange} placeholder="State" disabled={isLoading} />
                         </div>
                       </div>
-
                       <div className="space-y-2">
                         <Label htmlFor="pincode">Pincode</Label>
-                        <Input
-                          id="pincode"
-                          name="pincode"
-                          value={formData.pincode}
-                          onChange={handleChange}
-                          placeholder="6-digit pincode"
-                          maxLength={6}
-                          disabled={isLoading}
-                        />
+                        <Input id="pincode" name="pincode" value={formData.pincode} onChange={handleChange} placeholder="6-digit pincode" maxLength={6} disabled={isLoading} />
                       </div>
-
                       <div className="flex items-center gap-2 pt-2">
                         <input
                           type="checkbox"
@@ -415,27 +413,101 @@ const Checkout: React.FC = () => {
                           checked={saveNewAddress}
                           onChange={(e) => setSaveNewAddress(e.target.checked)}
                         />
-                        <Label htmlFor="saveAddress" className="cursor-pointer font-normal">Save this address for future orders</Label>
+                        <Label htmlFor="saveAddress" className="cursor-pointer font-normal">
+                          Save this address for future orders
+                        </Label>
                       </div>
                     </div>
                   )}
-
-                  <Button type="submit" size="lg" className="w-full mt-6" disabled={isLoading}>
-                    {isLoading ? (
-                      <>
-                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                        Placing Order...
-                      </>
-                    ) : (
-                      'Place Order'
-                    )}
-                  </Button>
                 </form>
               </CardContent>
             </Card>
+
+            {/* Payment Method Card */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <CreditCard className="w-5 h-5 text-primary" />
+                  Payment Method
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {/* COD Option */}
+                <div
+                  className={`p-4 border rounded-lg cursor-pointer transition-colors ${paymentMethod === 'COD'
+                      ? 'border-primary bg-primary/5'
+                      : 'border-border hover:border-primary/50'
+                    }`}
+                  onClick={() => setPaymentMethod('COD')}
+                >
+                  <div className="flex items-center gap-3">
+                    <div
+                      className={`w-4 h-4 rounded-full border flex items-center justify-center ${paymentMethod === 'COD' ? 'border-primary' : 'border-muted-foreground'
+                        }`}
+                    >
+                      {paymentMethod === 'COD' && (
+                        <div className="w-2 h-2 rounded-full bg-primary" />
+                      )}
+                    </div>
+                    <Truck className="w-5 h-5 text-muted-foreground" />
+                    <div>
+                      <p className="font-medium">Cash on Delivery</p>
+                      <p className="text-sm text-muted-foreground">Pay when your order arrives</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Online Payment Option */}
+                <div
+                  className={`p-4 border rounded-lg cursor-pointer transition-colors ${paymentMethod === 'ONLINE'
+                      ? 'border-primary bg-primary/5'
+                      : 'border-border hover:border-primary/50'
+                    }`}
+                  onClick={() => setPaymentMethod('ONLINE')}
+                >
+                  <div className="flex items-center gap-3">
+                    <div
+                      className={`w-4 h-4 rounded-full border flex items-center justify-center ${paymentMethod === 'ONLINE' ? 'border-primary' : 'border-muted-foreground'
+                        }`}
+                    >
+                      {paymentMethod === 'ONLINE' && (
+                        <div className="w-2 h-2 rounded-full bg-primary" />
+                      )}
+                    </div>
+                    <CreditCard className="w-5 h-5 text-muted-foreground" />
+                    <div>
+                      <p className="font-medium">Pay Online</p>
+                      <p className="text-sm text-muted-foreground">
+                        UPI, Cards, Net Banking via Razorpay
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Place Order Button */}
+            <Button
+              type="submit"
+              form="checkout-form"
+              size="lg"
+              className="w-full"
+              disabled={isLoading}
+            >
+              {isLoading ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  {paymentMethod === 'ONLINE' ? 'Processing...' : 'Placing Order...'}
+                </>
+              ) : paymentMethod === 'ONLINE' ? (
+                'Proceed to Pay'
+              ) : (
+                'Place Order (COD)'
+              )}
+            </Button>
           </div>
 
-          {/* Order Summary */}
+          {/* ── Right column: Order Summary ── */}
           <div>
             <Card className="sticky top-24">
               <CardHeader>
@@ -476,6 +548,12 @@ const Checkout: React.FC = () => {
                   <div className="flex justify-between text-muted-foreground">
                     <span>Shipping</span>
                     <span className="text-primary font-medium">Free</span>
+                  </div>
+                  <div className="flex justify-between text-muted-foreground">
+                    <span>Payment</span>
+                    <span className="font-medium">
+                      {paymentMethod === 'COD' ? 'Cash on Delivery' : 'Online (Razorpay)'}
+                    </span>
                   </div>
                   <Separator />
                   <div className="flex justify-between text-lg font-bold">
