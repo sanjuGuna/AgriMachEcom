@@ -39,6 +39,9 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { orderAPI } from '@/lib/api';
 import { useToast } from '@/hooks/use-toast';
+import { useReactToPrint } from 'react-to-print';
+import { OrderInvoice } from '@/components/orders/OrderInvoice';
+import { useRef } from 'react';
 
 interface OrderItem {
   machine: {
@@ -82,6 +85,18 @@ const Orders: React.FC = () => {
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const printRef = useRef<HTMLDivElement>(null);
+
+  const handlePrint = useReactToPrint({
+    contentRef: printRef,
+    documentTitle: `Invoice_${selectedOrder?._id.slice(-6).toUpperCase()}`,
+    onBeforePrint: () => {
+      // Small timeout allows the browser to fetch the image in the background
+      return new Promise((resolve) => {
+        setTimeout(resolve, 300);
+      });
+    },
+  });
 
   const { data: orders, isLoading, error } = useQuery({
     queryKey: ['admin-orders'],
@@ -371,12 +386,19 @@ const Orders: React.FC = () => {
         <Dialog open={!!selectedOrder} onOpenChange={() => setSelectedOrder(null)}>
           <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle>
-                Order #{selectedOrder?._id.slice(-6).toUpperCase()}
-              </DialogTitle>
-              <DialogDescription>
-                View details for order #{selectedOrder?._id.slice(-6).toUpperCase()}
-              </DialogDescription>
+              <div className="flex items-center justify-between mt-2 mr-8">
+                <DialogTitle>
+                  Order #{selectedOrder?._id.slice(-6).toUpperCase()}
+                </DialogTitle>
+                <DialogDescription className="hidden">
+                  View details for order #{selectedOrder?._id.slice(-6).toUpperCase()}
+                </DialogDescription>
+                <Button onClick={handlePrint} variant="outline" size="sm" className="h-8 gap-2">
+                  <Truck className="w-4 h-4 hidden" /> {/* Hidden icon to keep imports balanced if unused */}
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-printer"><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><path d="M6 9V3a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v6"/><rect x="6" y="14" width="12" height="8" rx="1"/></svg>
+                  Print Invoice
+                </Button>
+              </div>
             </DialogHeader>
 
             {selectedOrder && (
@@ -451,6 +473,11 @@ const Orders: React.FC = () => {
                       {formatPrice(selectedOrder.totalAmount)}
                     </span>
                   </div>
+                </div>
+                
+                {/* Hidden Printable Invoice */}
+                <div style={{ display: 'none' }}>
+                  <OrderInvoice ref={printRef} order={selectedOrder as unknown as React.ComponentProps<typeof OrderInvoice>['order']} />
                 </div>
               </div>
             )}
