@@ -52,7 +52,7 @@ interface OrderItem {
 
 interface Order {
   _id: string;
-  user: {
+  userId: {
     _id: string;
     name: string;
     email: string;
@@ -113,7 +113,8 @@ const Orders: React.FC = () => {
   const filteredOrders = orders?.filter((order) => {
     const matchesSearch =
       order._id.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      order.user?.name?.toLowerCase().includes(searchQuery.toLowerCase());
+      order.userId?.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      order.deliveryAddress?.phone?.includes(searchQuery);
 
     const matchesStatus = statusFilter
       ? statusFilter === 'PENDING'
@@ -228,7 +229,7 @@ const Orders: React.FC = () => {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <Input
               type="text"
-              placeholder="Search orders..."
+              placeholder="Search by ID, Name or Mobile..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="pl-9"
@@ -289,9 +290,9 @@ const Orders: React.FC = () => {
                       </TableCell>
                       <TableCell>
                         <div>
-                          <p className="font-medium">{order.user?.name || 'N/A'}</p>
+                          <p className="font-medium">{order.userId?.name || 'N/A'}</p>
                           <p className="text-xs text-muted-foreground">
-                            {order.user?.email}
+                            {order.userId?.email}
                           </p>
                         </div>
                       </TableCell>
@@ -393,9 +394,9 @@ const Orders: React.FC = () => {
                 {/* Customer Info */}
                 <div>
                   <h3 className="font-semibold mb-2">Customer</h3>
-                  <p>{selectedOrder.user?.name}</p>
+                  <p>{selectedOrder.userId?.name}</p>
                   <p className="text-sm text-muted-foreground">
-                    {selectedOrder.user?.email}
+                    {selectedOrder.userId?.email}
                   </p>
                 </div>
 
