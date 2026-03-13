@@ -1,7 +1,7 @@
 import React, { forwardRef } from 'react';
 
 interface OrderItem {
-  machine: {
+  machineId: {
     name: string;
     images?: string[];
   };
@@ -132,7 +132,7 @@ export const OrderInvoice = forwardRef<HTMLDivElement, OrderInvoiceProps>(({ ord
           <tbody className="divide-y divide-slate-200">
             {order.items.map((item, index) => (
               <tr key={index}>
-                <td className="py-4 px-4 text-slate-800 font-medium">{item.machine?.name}</td>
+                <td className="py-4 px-4 text-slate-800 font-medium">{item.machineId?.name}</td>
                 <td className="py-4 px-4 text-slate-600 text-center">{item.quantity}</td>
                 <td className="py-4 px-4 text-slate-600 text-right">{formatPrice(item.price)}</td>
                 <td className="py-4 px-4 text-slate-800 font-semibold text-right">

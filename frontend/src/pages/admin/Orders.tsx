@@ -47,7 +47,7 @@ import { DateRangeFilter } from '@/components/orders/DateRangeFilter';
 import { ExportCSVButton } from '@/components/orders/ExportCSVButton';
 
 export interface OrderItem {
-  machine: {
+  machineId: {
     _id: string;
     name: string;
     images: string[];
@@ -466,12 +466,12 @@ const Orders: React.FC = () => {
                         className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg"
                       >
                         <img
-                          src={item.machine?.images?.[0] || '/placeholder.svg'}
-                          alt={item.machine?.name}
+                          src={item.machineId?.images?.[0] || '/placeholder.svg'}
+                          alt={item.machineId?.name}
                           className="w-12 h-12 object-cover rounded"
                         />
                         <div className="flex-1">
-                          <p className="font-medium">{item.machine?.name}</p>
+                          <p className="font-medium">{item.machineId?.name}</p>
                           <p className="text-sm text-muted-foreground">
                             Qty: {item.quantity} × {formatPrice(item.price)}
                           </p>
