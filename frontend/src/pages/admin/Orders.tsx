@@ -42,8 +42,11 @@ import { useToast } from '@/hooks/use-toast';
 import { useReactToPrint } from 'react-to-print';
 import { OrderInvoice } from '@/components/orders/OrderInvoice';
 import { useRef } from 'react';
+import { MetricCards } from '@/components/orders/MetricCards';
+import { DateRangeFilter } from '@/components/orders/DateRangeFilter';
+import { ExportCSVButton } from '@/components/orders/ExportCSVButton';
 
-interface OrderItem {
+export interface OrderItem {
   machine: {
     _id: string;
     name: string;
@@ -53,7 +56,7 @@ interface OrderItem {
   price: number;
 }
 
-interface Order {
+export interface Order {
   _id: string;
   userId: {
     _id: string;
@@ -80,6 +83,8 @@ const statusOptions = ['PLACED', 'SHIPPED', 'DELIVERED'];
 const Orders: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const statusFilter = searchParams.get('status');
+  const startDate = searchParams.get('startDate');
+  const endDate = searchParams.get('endDate');
 
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
@@ -137,7 +142,15 @@ const Orders: React.FC = () => {
         : order.orderStatus === statusFilter
       : true;
 
-    return matchesSearch && matchesStatus;
+    let matchesDate = true;
+    if (startDate && endDate) {
+      const orderDate = new Date(order.createdAt).getTime();
+      const start = new Date(startDate).getTime();
+      const end = new Date(endDate).getTime();
+      matchesDate = orderDate >= start && orderDate <= end;
+    }
+
+    return matchesSearch && matchesStatus && matchesDate;
   });
 
   const handleStatusFilterChange = (value: string) => {
@@ -229,14 +242,19 @@ const Orders: React.FC = () => {
     <AdminLayout>
       <div className="p-6 lg:p-8">
         {/* Header */}
-        <div className="mb-8">
-          <h1 className="font-display text-3xl font-bold text-foreground mb-2">
-            Orders
-          </h1>
-          <p className="text-muted-foreground">
-            Manage and track customer orders
-          </p>
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 gap-4">
+          <div>
+            <h1 className="font-display text-3xl font-bold text-foreground mb-2">
+              Orders
+            </h1>
+            <p className="text-muted-foreground">
+              Manage and track customer orders
+            </p>
+          </div>
+          {filteredOrders && <ExportCSVButton orders={filteredOrders} />}
         </div>
+
+        {orders && <MetricCards orders={orders} />}
 
         {/* Filters */}
         <div className="flex flex-col sm:flex-row gap-4 mb-6">
@@ -271,6 +289,7 @@ const Orders: React.FC = () => {
               </SelectContent>
             </Select>
           </div>
+          <DateRangeFilter />
         </div>
 
         {/* Table */}
