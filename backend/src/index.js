@@ -7,8 +7,15 @@ connectDB();
 
 const frontendUrl = process.env.FRONTEND_URL?.replace(/\/$/, "");
 
+const allowedOrigins = [
+  frontendUrl,
+  "http://localhost:8080",
+  "https://standardagro.me",
+  "https://www.standardagro.me"
+].filter(Boolean);
+
 const corsOptions = {
-  origin: [frontendUrl, "http://localhost:8080"],
+  origin: allowedOrigins,
   credentials: true,
 }
 app.use(cors(corsOptions));
